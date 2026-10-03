@@ -1,0 +1,267 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Uploader</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 2.5rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #1a1a1a;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        p.subtitle {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .file-input-wrapper {
+            margin: 1.5rem 0;
+            padding: 2rem 1rem;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            transition: border-color 0.3s;
+        }
+
+            .file-input-wrapper:hover {
+                border-color: #007bff;
+            }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background 0.2s, transform 0.1s;
+            width: 100%;
+        }
+
+            .btn:hover {
+                background: #0056b3;
+            }
+
+            .btn:active {
+                transform: scale(0.98);
+            }
+
+        .btn-outline {
+            background: white;
+            color: #007bff;
+            border: 2px solid #007bff;
+            display: inline-block;
+            width: auto;
+            padding: 8px 16px;
+        }
+
+            .btn-outline:hover {
+                background: #f0f8ff;
+            }
+
+        #status {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: #555;
+            font-weight: 500;
+        }
+
+        /* New Styles for Result Section */
+        #result {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .success-icon {
+            color: #10b981;
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .link-container {
+            display: flex;
+            gap: 10px;
+            margin: 1.5rem 0;
+            align-items: center;
+        }
+
+        .link-input {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #374151;
+            background-color: #f3f4f6;
+            outline: none;
+        }
+
+            .link-input:focus {
+                border-color: #007bff;
+            }
+
+        .btn-copy {
+            background: #4b5563;
+            width: auto;
+        }
+
+            .btn-copy:hover {
+                background: #374151;
+            }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Upload a Photo</h2>
+        <p class="subtitle">Securely host your image on Cloudinary</p>
+
+        <!-- Upload Form -->
+        <form id="uploadForm">
+            <div class="file-input-wrapper">
+                <label for="photoInput" class="btn btn-outline">Choose File</label>
+                <input type="file" id="photoInput" accept="image/*" required>
+                <div id="fileName" style="margin-top: 15px; font-size: 0.9rem; color: #6b7280;">No file selected</div>
+            </div>
+            <button type="submit" class="btn" id="submitBtn">Upload Image</button>
+        </form>
+
+        <div id="status"></div>
+
+        <!-- Result Section -->
+        <div id="result">
+            <div class="success-icon">✓</div>
+            <h3>Upload Successful!</h3>
+            <p style="color: #666; font-size: 0.9rem;">Here is your direct image link:</p>
+
+            <div class="link-container">
+                <input type="text" id="imageUrl" class="link-input" readonly>
+                <button class="btn btn-copy" id="copyBtn">Copy</button>
+            </div>
+
+            <button class="btn btn-outline" id="resetBtn" style="width: 100%; border-color: #d1d5db; color: #374151;">Upload Another Photo</button>
+        </div>
+    </div>
+
+    <script>
+                const fileInput = document.getElementById('photoInput');
+                const form = document.getElementById('uploadForm');
+                const status = document.getElementById('status');
+                const resultDiv = document.getElementById('result');
+                const submitBtn = document.getElementById('submitBtn');
+                const copyBtn = document.getElementById('copyBtn');
+                const resetBtn = document.getElementById('resetBtn');
+                const imageUrlInput = document.getElementById('imageUrl');
+
+                // Update file name text when selected
+                fileInput.addEventListener('change', (e) => {
+                    document.getElementById('fileName').textContent = e.target.files[0] ? e.target.files[0].name : 'No file selected';
+                });
+
+                // Handle form submission
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const file = fileInput.files[0];
+                    if (!file) return;
+
+                    const formData = new FormData();
+                    formData.append('photo', file);
+
+                    status.textContent = 'Uploading... Please wait.';
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Uploading...';
+
+                    try {
+                        const response = await fetch('/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            // Hide the form and show the result view
+                            form.style.display = 'none';
+                            status.textContent = '';
+                            imageUrlInput.value = data.imageUrl;
+                            resultDiv.style.display = 'block';
+                        } else {
+                            status.textContent = 'Error: ' + (data.detail || data.error || 'Upload failed');
+                        }
+                    } catch (error) {
+                        status.textContent = 'Network error occurred.';
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Upload Image';
+                    }
+                });
+
+                // Handle Copy to Clipboard
+                copyBtn.addEventListener('click', () => {
+                    imageUrlInput.select();
+                    imageUrlInput.setSelectionRange(0, 99999); // For mobile devices
+                    navigator.clipboard.writeText(imageUrlInput.value).then(() => {
+                        const originalText = copyBtn.textContent;
+                        copyBtn.textContent = 'Copied!';
+                        copyBtn.style.background = '#10b981'; // Turn green temporarily
+
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                            copyBtn.style.background = '#4b5563'; // Revert to gray
+                        }, 2000);
+                    });
+                });
+
+                // Handle Upload Another Photo (Reset UI)
+                resetBtn.addEventListener('click', () => {
+                    form.reset();
+                    document.getElementById('fileName').textContent = 'No file selected';
+                    resultDiv.style.display = 'none';
+                    form.style.display = 'block';
+                    status.textContent = '';
+                });
+    </script>
+</body>
+</html>
